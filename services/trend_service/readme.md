@@ -1,66 +1,156 @@
 # Trend Detection Service
 
-# Overview
-The Trend Detection Service is responsible for analyzing social media posts and identifying trending topics in real time. It reads data from a shared storage file (sample_post.json) and processes the content to extract hashtags and detect trends. This service is part of our distributed microservices architecture for the CSC258 project.
+## Overview
 
-# Why This Service Was Created
-In a distributed system, different services handle different responsibilities. While the producer service collects data from social media, there needs to be a separate component that processes this data and extracts useful insights.
+The Trend Detection Service analyzes social media posts and identifies trending topics in real time. It processes text data, extracts hashtags, and returns the most frequent keywords as trends.
 
-# This service was created to:
-Analyze incoming social media data
-Identify trending topics based on hashtag frequency
-Simulate real-time stream processing
-Act as a foundation for a future consumer service (e.g., Kafka-based processing). It helps demonstrate key distributed systems concepts such as separation of concerns, scalability, and real-time data processing.
+This service is part of our distributed microservices architecture for the CSC258 project.
 
-# How It Works
+---
 
-# The service reads posts from:
+## Why This Service Was Created
+
+In a distributed system, different services handle different responsibilities. While the producer service collects data from social media, a separate service is needed to process that data and extract useful insights.
+
+This service was created to:
+
+* Analyze incoming social media data
+* Identify trending topics based on hashtag frequency
+* Simulate real-time stream processing
+* Serve as a foundation for future streaming integration (Kafka / Bluesky)
+
+It demonstrates key distributed systems concepts such as:
+
+* Separation of concerns
+* Scalability
+* Real-time processing
+
+---
+
+## How It Works
+
+### Data Source
+
+The service currently reads posts from:
+
+```
 storage/data/sample_post.json
+```
 
-# For each post:
-The text is cleaned (lowercased, punctuation removed)
-Hashtags are extracted
+### Processing Steps
 
-# A sliding window (recent posts only) is used to:
-Focus on current trends instead of all historical data
+For each post:
 
-# The system counts hashtag frequency and outputs:
-Top trending topics. The process repeats every few seconds to simulate real-time updates.
+* Text is cleaned (lowercase, punctuation removed)
+* Hashtags are extracted
 
-# How It Was Implemented
-Built using Python
+### Trend Detection
 
-# Used built-in libraries:
-json → for reading data
-re → for text cleaning
-collections → for counting trends
-deque → for sliding window logic
-pathlib → for reliable file paths
+* Uses a **sliding window** of recent posts
+* Counts hashtag frequency
+* Returns the **top trending keywords**
 
-# Steps followed:
-Created a new microservice folder inside services/
-Designed a trend detection algorithm using hashtag frequency
-Implemented sliding window logic for real-time simulation
-Connected the service to shared storage (sample_post.json)
-Tested the service with sample data
+---
 
-# How to Run
+## API Endpoints
 
-# From the project root:
-python services/trend_service/src/trend_detector.py
+The service is implemented as a Flask API.
 
-# Dependencies
-No external dependencies are required for this version.
-All modules used are part of Python’s standard library.
+### `/`
 
-# Future Improvements
-Connect to Kafka for real-time streaming
-Add API endpoints using Flask
-Improve trend detection using NLP techniques
-Integrate with dashboard for visualization
+Returns service status.
 
-# Resources
-Python Documentation: https://docs.python.org/3/
-Collections Module (Counter, deque)
-Regular Expressions (re module)
-Course materials and lecture notes (CSC258 Distributed Systems)
+### `/trends`
+
+Returns top trends based on stored data.
+
+### `/live-trends`
+
+Returns trends from live in-memory data (used for future streaming integration).
+
+---
+
+## How to Run
+
+Use Anaconda Python (Flask is installed there):
+
+```bash
+D:\Anaconda\python.exe services/trend_service/src/trend_detector.py
+```
+
+Then open in your browser:
+
+```
+http://127.0.0.1:5000/trends
+```
+
+---
+
+## Dependencies
+
+* Flask (for API)
+* Python standard libraries:
+
+  * `json`
+  * `re`
+  * `collections`
+  * `pathlib`
+
+---
+
+## Kafka (Future Integration)
+
+Kafka will be used as a message broker between services.
+
+### How it will work:
+
+```
+Producer → Kafka Topic → Trend Service → API / Dashboard
+```
+
+* The producer will send social media posts to a Kafka topic
+* The trend service will consume messages in real time
+* This replaces file-based communication
+
+### Benefits:
+
+* Scalability
+* Fault tolerance
+* Loose coupling between services
+* Real-time processing
+
+---
+
+## Future Improvements
+
+* Connect to Kafka for real-time streaming
+* Integrate Bluesky live data stream
+* Improve trend detection using NLP techniques
+* Connect to a dashboard for visualization
+* Containerize using Docker
+
+---
+
+## How It Was Implemented
+
+* Built using Python
+* Designed as a microservice inside `services/`
+* Implemented hashtag-based trend detection
+* Added sliding window logic for recent trends
+* Converted into a Flask API for integration with other services
+
+---
+
+## Resources
+
+* Python Documentation: https://docs.python.org/3/
+* Flask Documentation
+* Python `collections` module (Counter, deque)
+* Python `re` module
+* Course materials (CSC258 Distributed Systems)
+
+---
+
+## Contribution
+
+This service was designed and implemented to handle trend detection and provide a real-time API for retrieving trending topics.

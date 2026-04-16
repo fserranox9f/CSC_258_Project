@@ -11,19 +11,30 @@ WINDOW_SIZE = 10
 BASE_DIR = Path(__file__).resolve().parents[3]
 FILE_PATH = BASE_DIR / "storage" / "data" / "sample_post.json"
 
-window = deque(maxlen=WINDOW_SIZE)
-
+STOPWORDS = {
+    "the", "a", "an", "and", "or", "to", "of", "in", "on", "for", "is", "it",
+    "this", "that", "with", "as", "at", "by", "be", "are", "was", "were",
+    "from", "our", "your", "their", "have", "has", "had", "but", "not",
+    "you", "they", "we", "he", "she", "i", "me", "my", "us", "them",
+    "if", "so", "all", "too", "just", "out", "up", "down", "into", "about"
+}
 
 def clean_text(text: str) -> str:
     text = text.lower()
-    text = re.sub(r"[^\w\s#]", "", text)
+    text = re.sub(r"http\S+", "", text)   # remove links
+    text = re.sub(r"[^\w\s#]", "", text)  # keep words and hashtags
     return text
 
+def extract_hashtags(text: str) -> list[str]:
+    return re.findall(r"#(\w+)", text)
 
 def extract_keywords(text: str) -> list[str]:
     words = text.split()
-    return [word.replace("#", "") for word in words if word.startswith("#")]
-
+    keywords = [
+        word for word in words
+        if len(word) > 3 and word not in STOPWORDS and not word.startswith("#")
+    ]
+    return keywords
 
 def load_posts() -> list:
     try:
@@ -33,48 +44,35 @@ def load_posts() -> list:
         print(f"Error loading posts: {e}")
         return []
 
-
-def get_top_trends_from_posts(posts: list) -> list[dict]:
+def get_top_trends(posts: list) -> list[dict]:
     temp_window = deque(maxlen=WINDOW_SIZE)
 
     for post in posts[-WINDOW_SIZE:]:
         text = clean_text(post.get("text", ""))
-        keywords = extract_keywords(text)
-        temp_window.append(keywords)
 
-    all_keywords = [word for sublist in temp_window for word in sublist]
-    counter = Counter(all_keywords)
+        hashtags = extract_hashtags(text)
+        if hashtags:
+            terms = hashtags
+        else:
+            terms = extract_keywords(text)
 
-    return [
-        {"keyword": word, "count": count}
-        for word, count in counter.most_common(5)
-    ]
+        temp_window.append(terms)
 
-
-def add_live_post(text: str) -> None:
-    cleaned = clean_text(text)
-    keywords = extract_keywords(cleaned)
-    window.append(keywords)
-
-
-def get_live_trends() -> list[dict]:
-    all_keywords = [word for sublist in window for word in sublist]
-    counter = Counter(all_keywords)
+    all_terms = [word for sublist in temp_window for word in sublist]
+    counter = Counter(all_terms)
 
     return [
         {"keyword": word, "count": count}
         for word, count in counter.most_common(5)
     ]
-
 
 @app.route("/")
 def home():
     return jsonify({
         "service": "trend_service",
         "status": "running",
-        "endpoints": ["/trends", "/live-trends"]
+        "endpoints": ["/trends"]
     })
-
 
 @app.route("/trends")
 def trends():
@@ -86,7 +84,7 @@ def trends():
             "trends": []
         }), 200
 
-    top_trends = get_top_trends_from_posts(posts)
+    top_trends = get_top_trends(posts)
 
     return jsonify({
         "message": "Current top trends retrieved successfully from file data.",
@@ -94,16 +92,6 @@ def trends():
         "total_posts_loaded": len(posts),
         "trends": top_trends
     })
-
-
-@app.route("/live-trends")
-def live_trends():
-    return jsonify({
-        "message": "Current live trends retrieved successfully.",
-        "window_size": WINDOW_SIZE,
-        "trends": get_live_trends()
-    })
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
