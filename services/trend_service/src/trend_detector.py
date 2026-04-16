@@ -34,14 +34,30 @@ def load_posts() -> list:
         return []
 
 
-def get_top_trends(posts: list) -> list[dict]:
-    window.clear()
+def get_top_trends_from_posts(posts: list) -> list[dict]:
+    temp_window = deque(maxlen=WINDOW_SIZE)
 
     for post in posts[-WINDOW_SIZE:]:
         text = clean_text(post.get("text", ""))
         keywords = extract_keywords(text)
-        window.append(keywords)
+        temp_window.append(keywords)
 
+    all_keywords = [word for sublist in temp_window for word in sublist]
+    counter = Counter(all_keywords)
+
+    return [
+        {"keyword": word, "count": count}
+        for word, count in counter.most_common(5)
+    ]
+
+
+def add_live_post(text: str) -> None:
+    cleaned = clean_text(text)
+    keywords = extract_keywords(cleaned)
+    window.append(keywords)
+
+
+def get_live_trends() -> list[dict]:
     all_keywords = [word for sublist in window for word in sublist]
     counter = Counter(all_keywords)
 
@@ -56,7 +72,7 @@ def home():
     return jsonify({
         "service": "trend_service",
         "status": "running",
-        "endpoint": "/trends"
+        "endpoints": ["/trends", "/live-trends"]
     })
 
 
@@ -70,15 +86,24 @@ def trends():
             "trends": []
         }), 200
 
-    top_trends = get_top_trends(posts)
+    top_trends = get_top_trends_from_posts(posts)
 
     return jsonify({
-        "message": "Current top trends retrieved successfully.",
+        "message": "Current top trends retrieved successfully from file data.",
         "window_size": WINDOW_SIZE,
         "total_posts_loaded": len(posts),
         "trends": top_trends
     })
 
 
+@app.route("/live-trends")
+def live_trends():
+    return jsonify({
+        "message": "Current live trends retrieved successfully.",
+        "window_size": WINDOW_SIZE,
+        "trends": get_live_trends()
+    })
+
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
