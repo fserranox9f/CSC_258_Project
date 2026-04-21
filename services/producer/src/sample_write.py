@@ -19,7 +19,22 @@ class SampleWriter:
         save_path = Path(SAVE_SAMPLE_PATH)
         save_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(save_path, "w", encoding="utf-8") as f:
-            json.dump(self.posts, f, indent=2, ensure_ascii=False)
+        existing_posts = []
 
-        print(f"Saved {len(self.posts)} posts to {save_path}")
+        if save_path.exists():
+            try:
+                with open(save_path, "r", encoding="utf-8") as f:
+                    existing_posts = json.load(f)
+
+                if not isinstance(existing_posts, list):
+                    existing_posts = []
+            except (json.JSONDecodeError, OSError):
+                existing_posts = []
+
+        combined_posts = existing_posts + self.posts
+
+        with open(save_path, "w", encoding="utf-8") as f:
+            json.dump(combined_posts, f, indent=2, ensure_ascii=False)
+
+        print(f"Saved {len(self.posts)} new posts to {save_path}")
+        print(f"Total posts in file: {len(combined_posts)}")
