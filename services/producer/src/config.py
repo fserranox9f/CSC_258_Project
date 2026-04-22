@@ -9,4 +9,4 @@ JETSTREAM_URL = (
 
 SOURCE_NAME = "bluesky"
 SAVE_SAMPLE_PATH = BASE_DIR / "storage" / "data" / "sample_post.json"
-MAX_SAMPLE_POSTS = 20
+MAX_SAMPLE_POSTS = 10000
