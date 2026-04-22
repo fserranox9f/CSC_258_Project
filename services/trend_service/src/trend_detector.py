@@ -16,25 +16,50 @@ STOPWORDS = {
     "this", "that", "with", "as", "at", "by", "be", "are", "was", "were",
     "from", "our", "your", "their", "have", "has", "had", "but", "not",
     "you", "they", "we", "he", "she", "i", "me", "my", "us", "them",
-    "if", "so", "all", "too", "just", "out", "up", "down", "into", "about"
+    "if", "so", "all", "too", "just", "out", "up", "down", "into", "about",
+    "when", "what", "where", "there", "then", "than", "more", "most",
+    "using", "based", "framework", "system", "study", "paper", "issue",
+    "also", "through", "current", "currently", "another", "some", "like",
+    "around", "friend", "thanks", "email", "customer", "apologies"
+}
+
+BLOCKLIST = {
+    "wang", "jiashuo", "jiawen", "johnny", "brkljavc", "kalu", "konishi",
+    "tsubouchi", "tsuruta", "duan", "song", "xu", "li", "yu", "liu"
 }
 
 def clean_text(text: str) -> str:
     text = text.lower()
-    text = re.sub(r"http\S+", "", text)   # remove links
-    text = re.sub(r"[^\w\s#]", "", text)  # keep words and hashtags
+    text = re.sub(r"http\S+", "", text)
+    text = re.sub(r"[^\w\s#]", "", text)
     return text
+
 
 def extract_hashtags(text: str) -> list[str]:
     return re.findall(r"#(\w+)", text)
 
+
 def extract_keywords(text: str) -> list[str]:
     words = text.split()
-    keywords = [
-        word for word in words
-        if len(word) > 3 and word not in STOPWORDS and not word.startswith("#")
-    ]
+    keywords = []
+
+    for word in words:
+        if word.startswith("#"):
+            continue
+        if len(word) < 4:
+            continue
+        if word in STOPWORDS:
+            continue
+        if word in BLOCKLIST:
+            continue
+        if word.isdigit():
+            continue
+        if re.search(r"\d", word):
+            continue
+        keywords.append(word)
+
     return keywords
+
 
 def load_posts() -> list:
     try:
@@ -43,6 +68,7 @@ def load_posts() -> list:
     except Exception as e:
         print(f"Error loading posts: {e}")
         return []
+
 
 def get_top_trends(posts: list) -> list[dict]:
     temp_window = deque(maxlen=WINDOW_SIZE)
@@ -66,6 +92,7 @@ def get_top_trends(posts: list) -> list[dict]:
         for word, count in counter.most_common(5)
     ]
 
+
 @app.route("/")
 def home():
     return jsonify({
@@ -73,6 +100,7 @@ def home():
         "status": "running",
         "endpoints": ["/trends"]
     })
+
 
 @app.route("/trends")
 def trends():
@@ -92,6 +120,7 @@ def trends():
         "total_posts_loaded": len(posts),
         "trends": top_trends
     })
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
