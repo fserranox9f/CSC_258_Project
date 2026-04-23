@@ -1,5 +1,6 @@
 import json
 import re
+import time
 from collections import Counter, deque
 from pathlib import Path
 from flask import Flask, jsonify
@@ -18,14 +19,14 @@ STOPWORDS = {
     "you", "they", "we", "he", "she", "i", "me", "my", "us", "them",
     "if", "so", "all", "too", "just", "out", "up", "down", "into", "about",
     "when", "what", "where", "there", "then", "than", "more", "most",
-    "using", "based", "framework", "system", "study", "paper", "issue",
     "also", "through", "current", "currently", "another", "some", "like",
     "around", "friend", "thanks", "email", "customer", "apologies"
 }
 
 BLOCKLIST = {
     "wang", "jiashuo", "jiawen", "johnny", "brkljavc", "kalu", "konishi",
-    "tsubouchi", "tsuruta", "duan", "song", "xu", "li", "yu", "liu"
+    "tsubouchi", "tsuruta", "duan", "song", "xu", "li", "yu", "liu",
+    "framework", "system", "study", "paper", "issue", "using", "based"
 }
 
 live_window = deque(maxlen=WINDOW_SIZE)
@@ -42,27 +43,23 @@ def extract_hashtags(text: str) -> list[str]:
     return re.findall(r"#(\w+)", text)
 
 
+def is_candidate_trend_word(word: str) -> bool:
+    if word.startswith("#"):
+        return False
+    if len(word) < 4:
+        return False
+    if not word.isalpha():
+        return False
+    if word in STOPWORDS:
+        return False
+    if word in BLOCKLIST:
+        return False
+    return True
+
+
 def extract_keywords(text: str) -> list[str]:
     words = text.split()
-    keywords = []
-
-    for word in words:
-        if word.startswith("#"):
-            continue
-        if len(word) < 4:
-            continue
-        if word in STOPWORDS:
-            continue
-        if word in BLOCKLIST:
-            continue
-        if word.isdigit():
-            continue
-        if re.search(r"\d", word):
-            continue
-
-        keywords.append(word)
-
-    return keywords
+    return [word for word in words if is_candidate_trend_word(word)]
 
 
 def extract_terms(text: str) -> list[str]:
@@ -133,27 +130,32 @@ def trends():
             "trends": []
         }), 200
 
+    start = time.perf_counter()
+    top_trends = get_top_trends(posts)
+    elapsed = time.perf_counter() - start
+
     return jsonify({
         "message": "Current top trends retrieved successfully from file data.",
         "window_size": WINDOW_SIZE,
         "total_posts_loaded": len(posts),
-        "trends": get_top_trends(posts)
+        "processing_time_seconds": round(elapsed, 6),
+        "trends": top_trends
     })
 
 
 @app.route("/live-trends")
 def live_trends():
+    start = time.perf_counter()
+    top_trends = get_live_trends()
+    elapsed = time.perf_counter() - start
+
     return jsonify({
         "message": "Current live trends retrieved successfully.",
         "window_size": WINDOW_SIZE,
-        "trends": get_live_trends()
+        "processing_time_seconds": round(elapsed, 6),
+        "trends": top_trends
     })
 
 
 if __name__ == "__main__":
-    # Temporary sample live data for testing
-    add_live_post("earthquake in SF right now #earthquake")
-    add_live_post("NBA finals are crazy #nba")
-    add_live_post("another earthquake reported #earthquake")
-
     app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
