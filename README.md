@@ -1,64 +1,119 @@
-# CSC_258_Project
-Real Time Social Media Adaptive Trend System
+# CSC 258 Project
+Real-Time Social Media Adaptive Trend System
 
-## Kafka (Message Broker Overview)
+## Overview
+This project collects social media post data, converts it into a shared internal format, and analyzes that data to identify trending terms.
 
-Kafka is a system that allows different services in our application 
-to communicate with each other in real time by sending and receiving messages.
+Implementation 1 focuses on a working prototype with two main services:
 
-Instead of services directly calling each other, Kafka acts 
-as a middle layer that stores and forwards data between them.
+- `producer`: connects to the Bluesky Jetstream feed, normalizes post data, and saves it to a JSON file
+- `trend_service`: reads the saved post data and exposes trend results through a Flask API
 
-### Key Concepts
+## Current Architecture
+Current implementation:
 
-* **Producer**: A service that sends data
-
-  * In our project: the `producer` service collects social media posts and sends them
-
-* **Consumer**: A service that reads data
-
-  * In our project: the `trend_service` will act as a consumer and process posts
-
-* **Topic**: A channel where messages are stored
-
-  * Example: `social_posts` topic will hold incoming posts
-
-* **Message**: A single piece of data (e.g., one social media post)
-
----
-
-### How Kafka Fits Into Our System
-
-Current approach (temporary):
-
-```
-Producer → JSON file → Trend Service
+```text
+Bluesky Jetstream -> Producer -> sample_post.json -> Trend Service API
 ```
 
-Future architecture (with Kafka):
+Planned future architecture:
 
+```text
+Bluesky Jetstream -> Producer -> Kafka -> Trend Service -> API / Dashboard
 ```
-Producer → Kafka Topic → Trend Service → API/Dashboard
+
+Kafka is part of the planned distributed-system design, but the current submission uses file-based communication so the prototype can be run and demonstrated locally.
+
+## What Is Implemented
+- Bluesky post ingestion through a WebSocket consumer
+- Normalization of incoming post data into a shared internal schema
+- Storage of normalized posts in `storage/data/sample_post.json`
+- Trend detection using recent posts and extracted hashtags/keywords
+- Flask API endpoints for status and trend results
+- Cached trend responses to improve repeated request performance
+
+## Repository Structure
+```text
+common/
+  normalize_shape.json
+  post_schema.json
+services/
+  producer/
+    src/
+  trend_service/
+    src/
+storage/
+  data/
+    sample_post.json
 ```
 
-The producer will send social media posts to a Kafka topic, and the trend detection service will read those messages in real time and process them.
+## Requirements
+- Python 3.11+ recommended
+- Internet access is required only for the `producer` service when collecting live Bluesky data
 
----
+## Run The Trend Service
 
-### Why We Use Kafka
+From the project root:
+```bash
+pip install -r services/trend_service/requirements.txt
+python services/trend_service/src/trend_detector.py
+```
 
-Kafka helps us build a better distributed system by:
+Open these endpoints in a browser:
 
-* **Scalability**: Multiple services can process data at the same time
-* **Fault Tolerance**: Messages are stored, so data is not lost if a service fails
-* **Loose Coupling**: Services do not depend directly on each other
-* **Real-Time Processing**: Data can be processed as it arrives
+- `http://127.0.0.1:5000/`
+- `http://127.0.0.1:5000/trends`
+- `http://127.0.0.1:5000/live-trends`
 
----
+## Run The Producer
+From the project root:
 
-### Future Work
+```bash
+pip install -r services/producer/requirements.txt
+python services/producer/src/main.py
+```
 
-* Replace file-based communication with Kafka
-* Connect producer service to publish messages to a topic
-* Update trend service to consume messages from Kafka
-* Integrate with other services like API and dashboard
+What it does:
+- connects to Bluesky Jetstream
+- filters post events
+- normalizes each post
+- appends posts to `storage/data/sample_post.json`
+- stops after reaching the configured sample limit
+
+## Suggested Demo Flow
+1. Start the trend service.
+2. Open `/trends` to confirm the API is running.
+3. Run the producer to collect or refresh post data.
+4. Refresh `/trends` to view the current top trend output.
+5. Open `/live-trends` to view the live-window trend response.
+
+## API Endpoints
+
+### `/`
+Returns service status and available endpoints.
+
+### `/trends`
+Returns top trends from file-backed post data in `sample_post.json`.
+
+### `/live-trends`
+Returns trends from the in-memory live window. If the live window is empty, the service seeds it from the most recent stored posts so the endpoint remains useful during local demos.
+
+## Notes For Implementation 1
+- The current system is intentionally file-based
+- Kafka is not yet wired into the running pipeline
+- `docker-compose.yml` is not yet complete
+- The current prototype is intended to demonstrate service separation, ingestion, normalization, and trend analysis
+
+## Future Work
+- Replace JSON file communication with Kafka topics
+- Add a true streaming consumer path into the trend service
+- Improve trend quality with better filtering and NLP techniques
+- Add automated tests for producer normalization and trend extraction
+- Add a dashboard or frontend for visualization
+- Finish container orchestration for all services
+
+## Files To Know
+- [services/producer/src/main.py]
+- [services/producer/src/normalizer.py]
+- [services/trend_service/src/trend_detector.py]
+- [storage/data/sample_post.json]
