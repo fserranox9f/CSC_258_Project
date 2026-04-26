@@ -1,64 +1,122 @@
-# CSC_258_Project
-Real Time Social Media Adaptive Trend System
+# Real Time Social Media Trend Analysis
 
-## Kafka (Message Broker Overview)
+## A CSC 258 Distributed Systems Project
 
-Kafka is a system that allows different services in our application 
-to communicate with each other in real time by sending and receiving messages.
+This project is a real time social media trend detection system. It collects live posts from the website Bluesky and detects trending topics/words.
 
-Instead of services directly calling each other, Kafka acts 
-as a middle layer that stores and forwards data between them.
+| Team Member           | Role                                     | Contributions |
+| --------------------- | ---------------------------------------- | ------------- |
+| **Abdurrehman Aslam** | Code Developer and Survey Paper Reviewer |               |
+| **Abubaker Sayyed**   | Survey Paper Writer and Code Reviewer    |               |
+| **Fidel Serrano**     | Code Developer and Survey Paper Reviewer |               |
+| **Soulius Jones**     | Survey Paper Writer and Code Reviewer    |               |
 
-### Key Concepts
+## Code Structure
 
-* **Producer**: A service that sends data
+https://github.com/fserranox9f/CSC_258_Project.git
 
-  * In our project: the `producer` service collects social media posts and sends them
+The code is structured into five main components where each component has its own subdirectory.
+The flow of the program is
 
-* **Consumer**: A service that reads data
+ingestion -> broker -> processing -> storage -> dashboard
 
-  * In our project: the `trend_service` will act as a consumer and process posts
+The ingestion service opens and keeps a continous websocket connectioon to BlueSky servers. It pushes the post read from Bluesky to Kafka Servers. The messages are normalized into a JOSN type.
 
-* **Topic**: A channel where messages are stored
+The broker service (Kafka) works as a communication layer between the ingestion and processing service. Kafka is in a Docker container and the compose file in the root directory builds an image so services can connect to it locally at port 9092.
 
-  * Example: `social_posts` topic will hold incoming posts
+The processing service reads post from the Kafka server and tries to detect/count the most commonly found words in a post. It saves the results to the storage service.
 
-* **Message**: A single piece of data (e.g., one social media post)
+The storage service holds the data produced by the processing service and then is read from the dashboard service. Currently, the data is being saved locally.
 
----
+The dashboard service displays the resulting trends of most popular words in a local webpage.
 
-### How Kafka Fits Into Our System
-
-Current approach (temporary):
-
+```text
+services
+    broker
+        config.py
+    ingestion
+        consumer.py
+        config.py
+        main.py
+        normalize.py
+        producer.py
+        writer.py
+        logs
+            post_dump.json
+    processing
+        consumer.py
+        config.py
+        main.py
+        processor.py
+    storage
+        config.py
+        trend_save.py
+        logs
+            trends.json
+            example_posts.json
+    dashboard
+        index.html
+        styles.css
+        script.js
 ```
-Producer → JSON file → Trend Service
+
+## Dependencies and Environment
+
+The project currently uses Python, Docker, Kafka, and Javascript.
+
+Python dependencies are listed in `requirements.txt`
+
+Docker is also needed to run the Kafka broker image.
+
+- Operating system: Windows
+- Shell: PowerShell
+- Python runtime: Python 3.11
+- Container runtime: Docker Desktop
+- Message broker: Apache Kafka running in Docker
+- Kafka port: localhost:9092
+- Dashboard server: Python local HTTP server http://localhost:8000/services/dashboard/index.html
+
+## How to Run
+
+The following steps and commands were executed at the root level of the project. Since all services executed hear run constiounusly, each command is ran in different terminal windows.
+
+1. Build and run Docker container for Kafka broker
+
+```powershell
+    docker compose up -d broker
 ```
 
-Future architecture (with Kafka):
+2. Run the ingestion service.
 
+```powershell
+    python -m services.ingestion.main
 ```
-Producer → Kafka Topic → Trend Service → API/Dashboard
+
+3. Run the processing service.
+
+```powershell
+    python -m services.processing.main
 ```
 
-The producer will send social media posts to a Kafka topic, and the trend detection service will read those messages in real time and process them.
+4. Run the local http server
 
----
+```powershell
+    python -m http.server 8000
+```
 
-### Why We Use Kafka
+5. See the local dashboard in a web browser
+   http://localhost:8000/services/dashboard/index.html
 
-Kafka helps us build a better distributed system by:
+Other
 
-* **Scalability**: Multiple services can process data at the same time
-* **Fault Tolerance**: Messages are stored, so data is not lost if a service fails
-* **Loose Coupling**: Services do not depend directly on each other
-* **Real-Time Processing**: Data can be processed as it arrives
+See messages in Kafka
 
----
+```powershell
+    docker exec -it broker /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic BlueSky_socialmedia_posts --from-beginning
+```
 
-### Future Work
+Install Python dependencies
 
-* Replace file-based communication with Kafka
-* Connect producer service to publish messages to a topic
-* Update trend service to consume messages from Kafka
-* Integrate with other services like API and dashboard
+```powershell
+    pip install -r requirements.txt
+```

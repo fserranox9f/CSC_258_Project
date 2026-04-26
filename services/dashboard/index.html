@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Trends Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Live Social Trends</h1>
+  </header>
+
+  <main>
+    <section class="summary">
+        
+      <div class="card">
+        <h2>Posts Processed</h2>
+        <p id="postsProcessed">0</p>
+      </div>
+
+      <div class="card">
+        <h2>Last Updated</h2>
+        <p id="lastUpdated">Waiting</p>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="section-title">Top Topics</h2>
+      <div id="trendList" class="trend-list"></div>
+    </section>
+
+    <section>
+      <h2 class="section-title">Example Posts</h2>
+      <div id="exampleList" class="example-list"></div>
+    </section>
+
+    <p id="status" class="status">Loading trend data...</p>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

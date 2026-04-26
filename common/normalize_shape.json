@@ -1,8 +1,0 @@
-{
-  "post_id": "did:plc:abc123:rkey456",
-  "timestamp": "2026-04-13T18:30:00Z",
-  "text": "some message",
-  "author": "did:plc:abc123",
-  "source": "bluesky",
-  "is_repost": false
-}
