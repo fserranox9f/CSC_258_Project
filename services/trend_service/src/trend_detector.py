@@ -8,7 +8,7 @@ from flask import Flask, jsonify
 
 app = Flask(__name__)
 
-WINDOW_SIZE = 50
+WINDOW_SIZE = 1000
 
 BASE_DIR = Path(__file__).resolve().parents[3]
 FILE_PATH = BASE_DIR / "storage" / "data" / "sample_post.json"

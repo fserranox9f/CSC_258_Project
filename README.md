@@ -24,13 +24,14 @@ Bluesky Jetstream -> Producer -> Kafka -> Trend Service -> API / Dashboard
 
 Kafka is part of the planned distributed-system design, but the current submission uses file-based communication so the prototype can be run and demonstrated locally.
 
-## What Is Implemented
-- Bluesky post ingestion through a WebSocket consumer
-- Normalization of incoming post data into a shared internal schema
-- Storage of normalized posts in `storage/data/sample_post.json`
-- Trend detection using recent posts and extracted hashtags/keywords
-- Flask API endpoints for status and trend results
-- Cached trend responses to improve repeated request performance
+## What Is Done
+- The project is split into separate services, including a `producer` and a `trend_service`
+- The `producer` collects Bluesky post data and normalizes it into a shared internal format
+- The normalized data is stored in `storage/data/sample_post.json` for downstream processing
+- The `trend_service` reads the stored data and returns trending keywords through a Flask API
+- The project demonstrates separation of concerns, modular service design, and a prototype of distributed-system architecture
+- The system can be run locally and tested through endpoints such as `/trends` and `/live-trends`
+- Cached trend responses improve repeated request performance
 
 ## Repository Structure
 ```text
@@ -55,7 +56,7 @@ storage/
 
 From the project root:
 ```bash
-pip install -r services/trend_service/requirements.txt
+python -m pip install -r services/trend_service/requirements.txt
 python services/trend_service/src/trend_detector.py
 ```
 
@@ -69,7 +70,7 @@ Open these endpoints in a browser:
 From the project root:
 
 ```bash
-pip install -r services/producer/requirements.txt
+python -m pip install -r services/producer/requirements.txt
 python services/producer/src/main.py
 ```
 
@@ -105,12 +106,36 @@ Returns trends from the in-memory live window. If the live window is empty, the 
 - The current prototype is intended to demonstrate service separation, ingestion, normalization, and trend analysis
 
 ## Future Work
-- Replace JSON file communication with Kafka topics
-- Add a true streaming consumer path into the trend service
+- Replace file-based communication with Kafka for true distributed messaging
+- Connect the `producer` directly to Kafka topics
+- Update the `trend_service` to consume messages in real time instead of relying on a local JSON file
+- Improve fault tolerance and availability with better service recovery and messaging reliability
+- Add stronger security between components
+- Improve scalability by allowing more services or instances to run in parallel
 - Improve trend quality with better filtering and NLP techniques
 - Add automated tests for producer normalization and trend extraction
 - Add a dashboard or frontend for visualization
 - Finish container orchestration for all services
+
+## Distributed System Evaluation
+
+The current project already demonstrates some distributed-system ideas through service separation and modular design, 
+but other qualities still need more implementation work.
+
+### Easy
+- `Open design`: the project already has separate services, clear roles, and defined endpoints
+- `Adaptability`: the `producer` and `trend_service` are separated, so the system can be extended more easily
+- `Consistency`: the current file-based workflow makes consistency simpler because both services rely on one shared data source
+
+### Medium
+- `Availability`: improving this would require better recovery behavior and more reliable service operation
+- `Security`: this would require stronger validation, safer communication, and better control over component access
+
+### Hard
+- `Fault tolerance`: this would require stronger recovery from service failures, retries, and more durable communication
+- `Scalability`: the current file-based system does not scale well, so true scalability would require Kafka or another distributed messaging system
+
+In summary, the project currently shows the structure of a distributed-system prototype, but the more advanced qualities such as scalability and fault tolerance still require additional work.
 
 ## Files To Know
 - [services/producer/src/main.py]
