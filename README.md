@@ -2,118 +2,129 @@
 Real-Time Social Media Adaptive Trend System
 
 ## Overview
-This project collects social media post data, converts it into a shared internal format, and analyzes that data to identify trending terms.
+This project ingests live Bluesky posts, publishes normalized posts to Kafka, processes those posts into trend snapshots, saves the results locally, and exposes them to a simple dashboard.
 
-Implementation 1 focuses on a working prototype with two main services:
+The current tracked codebase is organized around these active services:
 
-- `producer`: connects to the Bluesky Jetstream feed, normalizes post data, and saves it to a JSON file
-- `trend_service`: reads the saved post data and exposes trend results through a Flask API
+- `ingestion`: reads Bluesky Jetstream data, normalizes posts, and publishes them
+- `broker`: stores shared Kafka connection settings
+- `processing`: consumes normalized posts from Kafka and computes trend terms
+- `storage`: saves trend snapshots and example posts to local JSON files
+- `dashboard`: reads the saved JSON snapshots and renders a frontend view
 
 ## Current Architecture
-Current implementation:
 
 ```text
-Bluesky Jetstream -> Producer -> sample_post.json -> Trend Service API
+Bluesky Jetstream -> ingestion -> Kafka -> processing -> storage -> dashboard
 ```
-
-Planned future architecture:
-
-```text
-Bluesky Jetstream -> Producer -> Kafka -> Trend Service -> API / Dashboard
-```
-
-Kafka is part of the planned distributed-system design, but the current submission uses file-based communication so the prototype can be run and demonstrated locally.
 
 ## What Is Implemented
-- Bluesky post ingestion through a WebSocket consumer
-- Normalization of incoming post data into a shared internal schema
-- Storage of normalized posts in `storage/data/sample_post.json`
-- Trend detection using recent posts and extracted hashtags/keywords
-- Flask API endpoints for status and trend results
-- Cached trend responses to improve repeated request performance
+- Bluesky ingestion through WebSocket consumers
+- Normalization into a shared post shape
+- Kafka publishing and consuming with `kafka-python`
+- Trend extraction from normalized posts
+- Snapshot storage in local JSON files
+- Dashboard frontend that reads saved snapshot files
 
 ## Repository Structure
+
 ```text
-common/
-  normalize_shape.json
-  post_schema.json
 services/
-  producer/
-    src/
-  trend_service/
-    src/
-storage/
-  data/
-    sample_post.json
+  broker/
+  dashboard/
+  ingestion/
+  processing/
+  storage/
 ```
 
-## Requirements
-- Python 3.11+ recommended
-- Internet access is required only for the `producer` service when collecting live Bluesky data
+## Active Configuration
+The current tracked code uses Python config modules rather than environment-variable loading.
 
-## Run The Trend Service
+Main config files:
 
-From the project root:
-```bash
-pip install -r services/trend_service/requirements.txt
-python services/trend_service/src/trend_detector.py
-```
+- `services/broker/config.py`
+- `services/ingestion/config.py`
+- `services/processing/config.py`
+- `services/storage/config.py`
+- `services/trend_service/src/config.py` for the older standalone trend service path
 
-Open these endpoints in a browser:
+Reference file:
 
-- `http://127.0.0.1:5000/`
-- `http://127.0.0.1:5000/trends`
-- `http://127.0.0.1:5000/live-trends`
+- `.env.example` mirrors the current config values as a documentation template, but it is not auto-loaded by the running services
 
-## Run The Producer
-From the project root:
+## Run Paths In The Current Repo
+
+### Ingestion service
+Entry point:
 
 ```bash
-pip install -r services/producer/requirements.txt
-python services/producer/src/main.py
+python services/ingestion/main.py
 ```
 
-What it does:
-- connects to Bluesky Jetstream
-- filters post events
-- normalizes each post
-- appends posts to `storage/data/sample_post.json`
-- stops after reaching the configured sample limit
+Behavior:
+- consumes Bluesky Jetstream events
+- normalizes valid posts
+- publishes them to Kafka
 
-## Suggested Demo Flow
-1. Start the trend service.
-2. Open `/trends` to confirm the API is running.
-3. Run the producer to collect or refresh post data.
-4. Refresh `/trends` to view the current top trend output.
-5. Open `/live-trends` to view the live-window trend response.
+### Processing service
+Entry point:
 
-## API Endpoints
+```bash
+python services/processing/main.py
+```
 
-### `/`
-Returns service status and available endpoints.
+Behavior:
+- consumes normalized posts from Kafka
+- computes top trend terms
+- stores trend snapshots and example posts
 
-### `/trends`
-Returns top trends from file-backed post data in `sample_post.json`.
+### Dashboard
+Static files:
 
-### `/live-trends`
-Returns trends from the in-memory live window. If the live window is empty, the service seeds it from the most recent stored posts so the endpoint remains useful during local demos.
+- `services/dashboard/index.html`
+- `services/dashboard/script.js`
+- `services/dashboard/styles.css`
 
-## Notes For Implementation 1
-- The current system is intentionally file-based
-- Kafka is not yet wired into the running pipeline
-- `docker-compose.yml` is not yet complete
-- The current prototype is intended to demonstrate service separation, ingestion, normalization, and trend analysis
+The dashboard reads:
 
-## Future Work
-- Replace JSON file communication with Kafka topics
-- Add a true streaming consumer path into the trend service
-- Improve trend quality with better filtering and NLP techniques
-- Add automated tests for producer normalization and trend extraction
-- Add a dashboard or frontend for visualization
-- Finish container orchestration for all services
+- `services/storage/logs/trends.json`
+- `services/storage/logs/example_posts.json`
+
+## Consistency
+The current codebase improves consistency through:
+
+- a normalized post structure produced before Kafka publishing
+- Kafka as the handoff layer between ingestion and processing
+- snapshot files written in a consistent JSON structure by storage helpers
+- processing logic that only works from the consumed normalized post payload shape
+
+## Open Design
+The current codebase supports open design through:
+
+- separate services for ingestion, processing, storage, broker settings, and dashboard rendering
+- shared broker settings in a dedicated module
+- clear service entry points in `main.py` files
+- documented component boundaries in `INTERFACES.md`
+
+## Adaptability
+The current codebase supports adaptability through:
+
+- modular service separation
+- isolated config files per service
+- the ability to switch Jetstream endpoints and Kafka settings from config modules
+- storage and dashboard components that can be changed without rewriting ingestion logic
+
+## Notes
+- The root README previously described an older `producer` / `trend_service` prototype flow.
+- The active tracked code now centers on `ingestion`, `processing`, `storage`, `broker`, and `dashboard`.
+- The `services/trend_service/src/` directory still contains a config file, but the main tracked runtime flow is Kafka-based through `ingestion` and `processing`.
+- `.env.example` is included as a reference sheet for current settings, not as the active runtime configuration source.
 
 ## Files To Know
-- [services/producer/src/main.py]
-- [services/producer/src/normalizer.py]
-- [services/trend_service/src/trend_detector.py]
-- [storage/data/sample_post.json]
+- [services/ingestion/main.py](C:/Users/miyan/OneDrive/Miazen_Documents/CSU_California-State/Spring-2026/CSC258/CSC_258_Project/services/ingestion/main.py)
+- [services/ingestion/config.py](C:/Users/miyan/OneDrive/Miazen_Documents/CSU_California-State/Spring-2026/CSC258/CSC_258_Project/services/ingestion/config.py)
+- [services/processing/main.py](C:/Users/miyan/OneDrive/Miazen_Documents/CSU_California-State/Spring-2026/CSC258/CSC_258_Project/services/processing/main.py)
+- [services/processing/processor.py](C:/Users/miyan/OneDrive/Miazen_Documents/CSU_California-State/Spring-2026/CSC258/CSC_258_Project/services/processing/processor.py)
+- [services/storage/trend_save.py](C:/Users/miyan/OneDrive/Miazen_Documents/CSU_California-State/Spring-2026/CSC258/CSC_258_Project/services/storage/trend_save.py)
+- [services/dashboard/index.html](C:/Users/miyan/OneDrive/Miazen_Documents/CSU_California-State/Spring-2026/CSC258/CSC_258_Project/services/dashboard/index.html)
+- [INTERFACES.md](C:/Users/miyan/OneDrive/Miazen_Documents/CSU_California-State/Spring-2026/CSC258/CSC_258_Project/INTERFACES.md)

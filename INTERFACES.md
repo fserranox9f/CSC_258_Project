@@ -1,107 +1,98 @@
 # Service Interfaces
 
-This document describes the main component boundaries in the project.
+This document describes the component boundaries that are present in the currently tracked codebase.
 
-## Design Goal
+## Current Service Flow
 
-The system uses open design by keeping service responsibilities separate and by documenting
-how components exchange data.
+```text
+Bluesky Jetstream -> ingestion -> Kafka -> processing -> storage -> dashboard
+```
 
 ## Components
 
-### Producer
-
+### Ingestion
 Location:
-- `services/producer/src/`
+- `services/ingestion/`
 
 Responsibility:
-- connect to Bluesky Jetstream
-- extract valid post events
-- normalize posts into the shared format
-- save normalized posts for downstream processing
+- consume Bluesky Jetstream events
+- normalize valid posts
+- publish normalized posts to Kafka
 
-Input:
-- Bluesky Jetstream event stream
+Key files:
+- `main.py`
+- `config.py`
+- `normalize.py`
+- `consumer.py`
+- `producer.py`
 
-Output:
-- normalized post records written to `storage/data/sample_post.json`
-
-Shared contract:
-- `common/post_schema.json`
-
-Consistency guarantees:
-- writes replace the JSON file atomically
-- saved posts are deduplicated by `post_id`
-- normalized field names are preserved for downstream readers
-
-Configurable settings:
-- `PROJECT_ROOT`
-- `JETSTREAM_URL`
-- `SOURCE_NAME`
-- `SAVE_SAMPLE_PATH`
-- `MAX_SAMPLE_POSTS`
-- `RECONNECT_DELAY_SECONDS`
-
-### Trend Service
-
+### Broker
 Location:
-- `services/trend_service/src/`
+- `services/broker/`
 
 Responsibility:
-- load normalized post data
-- extract hashtags or keywords
-- compute top trends
-- expose results through HTTP endpoints
+- define shared Kafka broker settings such as bootstrap server and topic name
 
-Input:
-- normalized posts from `storage/data/sample_post.json`
+Key file:
+- `config.py`
 
-Output:
-- JSON API responses from `/`, `/trends`, and `/live-trends`
-
-Configurable settings:
-- `TREND_DATA_PATH`
-- `TREND_WINDOW_SIZE`
-- `TREND_TOP_K`
-- `TREND_TERM_MODE`
-- `TREND_SOURCE_FILTER`
-- `TREND_SEED_LIVE_FROM_FILE`
-- `TREND_SERVICE_HOST`
-- `TREND_SERVICE_PORT`
-- `TREND_SERVICE_DEBUG`
-
-Consistency guarantees:
-- only valid normalized records are used for trend analysis
-- malformed records are skipped rather than treated as valid posts
-- `/trends` exposes data-quality counts in the response
-
-### Shared Data Contract
-
+### Processing
 Location:
-- `common/post_schema.json`
-- `common/normalize_shape.json`
+- `services/processing/`
 
 Responsibility:
-- define the normalized payload shape expected across services
+- consume normalized posts from Kafka
+- extract trend terms and phrases
+- build trend snapshots and example posts
 
-## Current Integration Path
+Key files:
+- `main.py`
+- `config.py`
+- `consumer.py`
+- `processor.py`
 
-```text
-Bluesky Jetstream -> Producer -> sample_post.json -> Trend Service API
-```
+### Storage
+Location:
+- `services/storage/`
 
-## Planned Integration Path
+Responsibility:
+- save trend snapshots to JSON files
+- save example posts to JSON files for the dashboard
 
-```text
-Bluesky Jetstream -> Producer -> Kafka -> Trend Service -> API / Dashboard
-```
+Key files:
+- `trend_save.py`
+- `config.py`
+
+Output files:
+- `services/storage/logs/trends.json`
+- `services/storage/logs/example_posts.json`
+
+### Dashboard
+Location:
+- `services/dashboard/`
+
+Responsibility:
+- load trend snapshots from saved JSON files
+- display trends and example posts in the browser
+
+Key files:
+- `index.html`
+- `script.js`
+- `styles.css`
 
 ## Stable Interfaces To Preserve
+- the normalized post payload emitted by ingestion
+- the Kafka topic defined in `services/broker/config.py`
+- the trend snapshot JSON structure saved by storage
+- the dashboard input file locations used in `services/dashboard/script.js`
+- the config values documented in `.env.example`, which mirrors the active Python config modules for reference
 
-These are the easiest interfaces to keep stable as the project evolves:
+## Consistency Notes
+- ingestion normalizes posts before publishing them to Kafka
+- processing assumes the normalized payload shape when extracting terms
+- storage writes snapshots in a stable JSON structure for dashboard consumption
 
-- normalized post structure in `common/post_schema.json`
-- file location or future message payload shape used between producer and consumers
-- trend service HTTP endpoints
-
-As long as those interfaces stay documented and consistent, the internal implementation of each service can change more safely.
+## Important Repo Note
+- Some older documentation referred to `producer` and `trend_service` as the main active services.
+- The currently tracked implementation is centered on `ingestion`, `processing`, `storage`, `broker`, and `dashboard`.
+- `.env.example` is a documentation aid for these current settings and is not automatically loaded by the services.
