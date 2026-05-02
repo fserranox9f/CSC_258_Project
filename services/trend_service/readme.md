@@ -94,6 +94,9 @@ The trend service now supports configuration through environment variables:
 - `TREND_DATA_PATH`: path to the normalized post data file
 - `TREND_WINDOW_SIZE`: number of recent posts to analyze
 - `TREND_TOP_K`: number of top trend terms to return
+- `TREND_TERM_MODE`: analysis mode (`auto`, `hashtags`, or `keywords`)
+- `TREND_SOURCE_FILTER`: optional source name filter such as `bluesky`
+- `TREND_SEED_LIVE_FROM_FILE`: whether `/live-trends` seeds from file data when empty
 - `TREND_SERVICE_HOST`: host used by the Flask app
 - `TREND_SERVICE_PORT`: port used by the Flask app
 - `TREND_SERVICE_DEBUG`: enables or disables Flask debug mode
@@ -103,6 +106,7 @@ Example:
 ```bash
 set TREND_WINDOW_SIZE=100
 set TREND_TOP_K=10
+set TREND_TERM_MODE=hashtags
 python services/trend_service/src/trend_detector.py
 ```
 

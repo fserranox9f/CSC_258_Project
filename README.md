@@ -9,6 +9,17 @@ Implementation 1 focuses on a working prototype with two main services:
 - `producer`: connects to the Bluesky Jetstream feed, normalizes post data, and saves it to a JSON file
 - `trend_service`: reads the saved post data and exposes trend results through a Flask API
 
+## Adaptability
+
+The project currently supports adaptability through:
+
+- separate services that can change independently
+- configurable producer and trend-service settings
+- a shared normalized data contract that allows future components to reuse the same payload shape
+- trend-service options for analysis mode and optional source filtering
+
+This makes it easier to add new sources, adjust analysis behavior, or replace file-based communication later without rebuilding the whole system.
+
 ## Current Architecture
 Current implementation:
 

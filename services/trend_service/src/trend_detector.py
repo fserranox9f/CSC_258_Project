@@ -4,7 +4,17 @@ import time
 from collections import Counter, deque
 from threading import Lock
 from flask import Flask, jsonify
-from config import APP_DEBUG, APP_HOST, APP_PORT, TOP_K_TRENDS, TREND_DATA_PATH, WINDOW_SIZE
+from config import (
+    APP_DEBUG,
+    APP_HOST,
+    APP_PORT,
+    SEED_LIVE_FROM_FILE,
+    TOP_K_TRENDS,
+    TREND_DATA_PATH,
+    TREND_SOURCE_FILTER,
+    TREND_TERM_MODE,
+    WINDOW_SIZE,
+)
 
 app = Flask(__name__)
 
@@ -65,10 +75,25 @@ def extract_keywords(text: str) -> list[str]:
 
 
 def extract_terms(text: str) -> list[str]:
+    if TREND_TERM_MODE == "hashtags":
+        return extract_hashtags(text)
+    if TREND_TERM_MODE == "keywords":
+        return extract_keywords(text)
+
     hashtags = extract_hashtags(text)
     if hashtags:
         return hashtags
     return extract_keywords(text)
+
+
+def filter_posts(posts: list) -> list:
+    if not TREND_SOURCE_FILTER:
+        return posts
+
+    return [
+        post for post in posts
+        if str(post.get("source", "")).lower() == TREND_SOURCE_FILTER
+    ]
 
 
 def load_posts() -> list:
@@ -96,7 +121,7 @@ def get_cached_trend_data() -> dict:
                 "top_trends": list(trend_cache["top_trends"]),
             }
 
-        posts = load_posts()
+        posts = filter_posts(load_posts())
         top_trends = get_top_trends(posts) if posts else []
 
         trend_cache["file_mtime_ns"] = file_mtime_ns
@@ -159,6 +184,9 @@ def home():
             "TREND_DATA_PATH",
             "TREND_WINDOW_SIZE",
             "TREND_TOP_K",
+            "TREND_TERM_MODE",
+            "TREND_SOURCE_FILTER",
+            "TREND_SEED_LIVE_FROM_FILE",
             "TREND_SERVICE_HOST",
             "TREND_SERVICE_PORT",
             "TREND_SERVICE_DEBUG",
@@ -182,6 +210,8 @@ def trends():
         "message": "Current top trends retrieved successfully from file data.",
         "window_size": WINDOW_SIZE,
         "top_k": TOP_K_TRENDS,
+        "term_mode": TREND_TERM_MODE,
+        "source_filter": TREND_SOURCE_FILTER,
         "total_posts_loaded": trend_data["total_posts_loaded"],
         "processing_time_seconds": round(elapsed, 6),
         "trends": trend_data["top_trends"]
@@ -190,8 +220,8 @@ def trends():
 
 @app.route("/live-trends")
 def live_trends():
-    if not live_window:
-        posts = load_posts()
+    if not live_window and SEED_LIVE_FROM_FILE:
+        posts = filter_posts(load_posts())
         if posts:
             seed_live_window(posts)
 
@@ -203,6 +233,8 @@ def live_trends():
         "message": "Current live trends retrieved successfully.",
         "window_size": WINDOW_SIZE,
         "top_k": TOP_K_TRENDS,
+        "term_mode": TREND_TERM_MODE,
+        "source_filter": TREND_SOURCE_FILTER,
         "live_posts_loaded": len(live_window),
         "processing_time_seconds": round(elapsed, 6),
         "trends": top_trends
