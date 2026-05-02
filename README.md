@@ -24,6 +24,16 @@ Bluesky Jetstream -> Producer -> Kafka -> Trend Service -> API / Dashboard
 
 Kafka is part of the planned distributed-system design, but the current submission uses file-based communication so the prototype can be run and demonstrated locally.
 
+## Open Design
+
+The project currently supports open design through:
+
+- separate services with clear responsibilities
+- a shared normalized post contract in [common/post_schema.json](C:/Users/miyan/OneDrive/Miazen_Documents/CSU_California-State/Spring-2026/CSC258/CSC_258_Project/common/post_schema.json)
+- documented service boundaries in [INTERFACES.md](C:/Users/miyan/OneDrive/Miazen_Documents/CSU_California-State/Spring-2026/CSC258/CSC_258_Project/INTERFACES.md)
+
+This makes it easier to replace the current file-based handoff with Kafka later without changing the meaning of the payload itself.
+
 ## What Is Done
 - The project is split into separate services, including a `producer` and a `trend_service`
 - The `producer` collects Bluesky post data and normalizes it into a shared internal format
@@ -142,3 +152,5 @@ In summary, the project currently shows the structure of a distributed-system pr
 - [services/producer/src/normalizer.py]
 - [services/trend_service/src/trend_detector.py]
 - [storage/data/sample_post.json]
+- [common/post_schema.json](C:/Users/miyan/OneDrive/Miazen_Documents/CSU_California-State/Spring-2026/CSC258/CSC_258_Project/common/post_schema.json)
+- [INTERFACES.md](C:/Users/miyan/OneDrive/Miazen_Documents/CSU_California-State/Spring-2026/CSC258/CSC_258_Project/INTERFACES.md)

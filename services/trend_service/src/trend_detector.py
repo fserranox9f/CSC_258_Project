@@ -2,16 +2,11 @@ import json
 import re
 import time
 from collections import Counter, deque
-from pathlib import Path
 from threading import Lock
 from flask import Flask, jsonify
+from config import APP_DEBUG, APP_HOST, APP_PORT, TOP_K_TRENDS, TREND_DATA_PATH, WINDOW_SIZE
 
 app = Flask(__name__)
-
-WINDOW_SIZE = 1000
-
-BASE_DIR = Path(__file__).resolve().parents[3]
-FILE_PATH = BASE_DIR / "storage" / "data" / "sample_post.json"
 
 STOPWORDS = {
     "the", "a", "an", "and", "or", "to", "of", "in", "on", "for", "is", "it",
@@ -78,7 +73,7 @@ def extract_terms(text: str) -> list[str]:
 
 def load_posts() -> list:
     try:
-        with open(FILE_PATH, "r", encoding="utf-8") as f:
+        with open(TREND_DATA_PATH, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception as e:
         print(f"Error loading posts: {e}")
@@ -87,7 +82,7 @@ def load_posts() -> list:
 
 def get_cached_trend_data() -> dict:
     try:
-        file_mtime_ns = FILE_PATH.stat().st_mtime_ns
+        file_mtime_ns = TREND_DATA_PATH.stat().st_mtime_ns
     except OSError:
         return {
             "total_posts_loaded": 0,
@@ -127,7 +122,7 @@ def get_top_trends(posts: list) -> list[dict]:
 
     return [
         {"keyword": word, "count": count}
-        for word, count in counter.most_common(5)
+        for word, count in counter.most_common(TOP_K_TRENDS)
     ]
 
 
@@ -150,7 +145,7 @@ def get_live_trends() -> list[dict]:
 
     return [
         {"keyword": word, "count": count}
-        for word, count in counter.most_common(5)
+        for word, count in counter.most_common(TOP_K_TRENDS)
     ]
 
 
@@ -159,7 +154,15 @@ def home():
     return jsonify({
         "service": "trend_service",
         "status": "running",
-        "endpoints": ["/trends", "/live-trends"]
+        "endpoints": ["/trends", "/live-trends"],
+        "configurable_settings": [
+            "TREND_DATA_PATH",
+            "TREND_WINDOW_SIZE",
+            "TREND_TOP_K",
+            "TREND_SERVICE_HOST",
+            "TREND_SERVICE_PORT",
+            "TREND_SERVICE_DEBUG",
+        ],
     })
 
 
@@ -178,6 +181,7 @@ def trends():
     return jsonify({
         "message": "Current top trends retrieved successfully from file data.",
         "window_size": WINDOW_SIZE,
+        "top_k": TOP_K_TRENDS,
         "total_posts_loaded": trend_data["total_posts_loaded"],
         "processing_time_seconds": round(elapsed, 6),
         "trends": trend_data["top_trends"]
@@ -198,6 +202,7 @@ def live_trends():
     return jsonify({
         "message": "Current live trends retrieved successfully.",
         "window_size": WINDOW_SIZE,
+        "top_k": TOP_K_TRENDS,
         "live_posts_loaded": len(live_window),
         "processing_time_seconds": round(elapsed, 6),
         "trends": top_trends
@@ -205,4 +210,4 @@ def live_trends():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
+    app.run(host=APP_HOST, port=APP_PORT, debug=APP_DEBUG, use_reloader=False)

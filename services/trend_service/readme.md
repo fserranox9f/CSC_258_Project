@@ -75,7 +75,7 @@ Returns trends from live in-memory data (used for future streaming integration).
 Install dependencies and run the service from the project workspace:
 
 ```bash
-pip install -r services/trend_service/requirements.txt
+python -m pip install -r services/trend_service/requirements.txt
 python services/trend_service/src/trend_detector.py
 ```
 
@@ -83,6 +83,27 @@ Then open in your browser:
 
 ```
 http://127.0.0.1:5000/trends
+```
+
+---
+
+## Configurable Settings
+
+The trend service now supports configuration through environment variables:
+
+- `TREND_DATA_PATH`: path to the normalized post data file
+- `TREND_WINDOW_SIZE`: number of recent posts to analyze
+- `TREND_TOP_K`: number of top trend terms to return
+- `TREND_SERVICE_HOST`: host used by the Flask app
+- `TREND_SERVICE_PORT`: port used by the Flask app
+- `TREND_SERVICE_DEBUG`: enables or disables Flask debug mode
+
+Example:
+
+```bash
+set TREND_WINDOW_SIZE=100
+set TREND_TOP_K=10
+python services/trend_service/src/trend_detector.py
 ```
 
 ---

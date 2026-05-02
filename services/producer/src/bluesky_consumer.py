@@ -1,7 +1,7 @@
 import json
 import websocket
 import time
-from config import JETSTREAM_URL
+from config import JETSTREAM_URL, RECONNECT_DELAY_SECONDS
 
 class BlueskyConsumer:
     def __init__(self, on_event):
@@ -44,5 +44,5 @@ class BlueskyConsumer:
                     print("Sample target reached. Stopping producer.")
                     break
             except Exception as e:
-                print("Reconnecting in 5 seconds...", e)
-                time.sleep(5)
+                print(f"Reconnecting in {RECONNECT_DELAY_SECONDS} seconds...", e)
+                time.sleep(RECONNECT_DELAY_SECONDS)

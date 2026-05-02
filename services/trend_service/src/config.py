@@ -13,19 +13,15 @@ def find_base_dir() -> Path:
 
 
 BASE_DIR = Path(os.getenv("PROJECT_ROOT", find_base_dir()))
-
-JETSTREAM_URL = os.getenv(
-    "JETSTREAM_URL",
-    "wss://jetstream1.us-east.bsky.network/subscribe"
-    "?wantedCollections=app.bsky.feed.post",
-)
-
-SOURCE_NAME = os.getenv("SOURCE_NAME", "bluesky")
-SAVE_SAMPLE_PATH = Path(
+TREND_DATA_PATH = Path(
     os.getenv(
-        "SAVE_SAMPLE_PATH",
+        "TREND_DATA_PATH",
         str(BASE_DIR / "storage" / "data" / "sample_post.json"),
     )
 )
-MAX_SAMPLE_POSTS = int(os.getenv("MAX_SAMPLE_POSTS", "10000"))
-RECONNECT_DELAY_SECONDS = int(os.getenv("RECONNECT_DELAY_SECONDS", "5"))
+
+WINDOW_SIZE = int(os.getenv("TREND_WINDOW_SIZE", "1000"))
+TOP_K_TRENDS = int(os.getenv("TREND_TOP_K", "5"))
+APP_HOST = os.getenv("TREND_SERVICE_HOST", "0.0.0.0")
+APP_PORT = int(os.getenv("TREND_SERVICE_PORT", "5000"))
+APP_DEBUG = os.getenv("TREND_SERVICE_DEBUG", "true").lower() == "true"

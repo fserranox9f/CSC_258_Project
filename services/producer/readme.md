@@ -14,6 +14,39 @@ and saves a sample dataset for downstream processing.
 ## Run locally
 
 ```bash
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 python src/main.py
 ```
+
+## Configurable Settings
+
+The producer supports configuration through environment variables:
+
+- `PROJECT_ROOT`: base project path override
+- `JETSTREAM_URL`: source WebSocket URL
+- `SOURCE_NAME`: normalized source label written into posts
+- `SAVE_SAMPLE_PATH`: output path for normalized posts
+- `MAX_SAMPLE_POSTS`: stop condition for captured posts
+- `RECONNECT_DELAY_SECONDS`: reconnect delay after connection errors
+
+Example:
+
+```bash
+set MAX_SAMPLE_POSTS=500
+set RECONNECT_DELAY_SECONDS=3
+python src/main.py
+```
+
+## Interface Summary
+
+Input:
+
+- Bluesky Jetstream post events
+
+Output:
+
+- normalized post objects written to `storage/data/sample_post.json`
+
+Shared contract:
+
+- `../../common/post_schema.json`
