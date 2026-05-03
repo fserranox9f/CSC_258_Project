@@ -2,8 +2,12 @@
 
 import random
 import re
-from collections import Counter
-from services.processing.config import EXCLUDED_AUTHORS
+from collections import Counter, deque
+from services.processing.config import (
+    EXCLUDED_AUTHORS,
+    MAX_EXAMPLES_PER_TOPIC,
+    MAX_TRACKED_TOPICS,
+)
 from services.storage.logs.unwanted_words import STOPWORDS
 
 URL_PATTERN = re.compile(r"https?://\S+|www\.\S+")
@@ -16,26 +20,32 @@ class TrendProcessor:
         self.topic_counts = Counter()
         self.topic_examples = {}
         self.posts_processed = 0
+        self.invalid_posts_skipped = 0
+        self.pruned_topics = 0
 
     def process_post(self, post: dict):
+        if not self._is_valid_post(post):
+            self.invalid_posts_skipped += 1
+            return False
+
         if post.get("author") in EXCLUDED_AUTHORS:
-            return
+            return False
 
         text = post.get("text", "")
 
         if not text:
-            return
+            return False
 
         topics = self._extract_topics(text)
 
         if not topics:
-            return
+            return False
 
         self.topic_counts.update(topics)
 
         for topic in topics:
             if topic not in self.topic_examples:
-                self.topic_examples[topic] = []
+                self.topic_examples[topic] = deque(maxlen=MAX_EXAMPLES_PER_TOPIC)
 
             self.topic_examples[topic].append(
                 {
@@ -46,7 +56,10 @@ class TrendProcessor:
                 }
             )
 
+        self._prune_tracked_topics()
+
         self.posts_processed += 1
+        return True
 
     def top_terms(self, limit=10):
         return self.topic_counts.most_common(limit)
@@ -95,3 +108,37 @@ class TrendProcessor:
             phrases.append(f"{first_word} {second_word}")
 
         return phrases
+
+    def _prune_tracked_topics(self):
+        overflow = len(self.topic_counts) - MAX_TRACKED_TOPICS
+
+        if overflow <= 0:
+            return
+
+        for topic, _count in self.topic_counts.most_common()[MAX_TRACKED_TOPICS:]:
+            self.topic_counts.pop(topic, None)
+            self.topic_examples.pop(topic, None)
+            self.pruned_topics += 1
+
+    def _is_valid_post(self, post):
+        if not isinstance(post, dict):
+            return False
+
+        required_string_fields = ("post_id", "text", "author", "source")
+
+        for field in required_string_fields:
+            value = post.get(field)
+
+            if not isinstance(value, str) or not value.strip():
+                return False
+
+        timestamp = post.get("timestamp")
+        is_repost = post.get("is_repost")
+
+        if timestamp is not None and not isinstance(timestamp, str):
+            return False
+
+        if not isinstance(is_repost, bool):
+            return False
+
+        return True

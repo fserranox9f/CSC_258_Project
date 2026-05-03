@@ -4,3 +4,54 @@ services:
     container_name: broker
     ports:
       - "9092:9092"
+    environment:
+      KAFKA_LISTENERS: CONTROLLER://localhost:9091,HOST://0.0.0.0:9092,DOCKER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: HOST://localhost:9092,DOCKER://broker:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,DOCKER:PLAINTEXT,HOST:PLAINTEXT
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9091
+      KAFKA_INTER_BROKER_LISTENER_NAME: DOCKER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  ingestion:
+    image: python:3.11-slim
+    container_name: ingestion
+    working_dir: /app
+    command: sh -c "pip install --no-cache-dir -r requirements.txt && python -m services.ingestion.main"
+    environment:
+      PYTHONUNBUFFERED: "1"
+      KAFKA_BOOTSTRAP_SERVERS: broker:9093
+    volumes:
+      - .:/app
+    depends_on:
+      - broker
+    restart: unless-stopped
+
+  processing:
+    image: python:3.11-slim
+    container_name: processing
+    working_dir: /app
+    command: sh -c "pip install --no-cache-dir -r requirements.txt && python -m services.processing.main"
+    environment:
+      PYTHONUNBUFFERED: "1"
+      KAFKA_BOOTSTRAP_SERVERS: broker:9093
+    volumes:
+      - .:/app
+    depends_on:
+      - broker
+    restart: unless-stopped
+
+  dashboard:
+    image: python:3.11-slim
+    container_name: dashboard
+    working_dir: /app
+    command: python -m http.server 8000 --directory /app/services
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    depends_on:
+      - processing
+    restart: unless-stopped
