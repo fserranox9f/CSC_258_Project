@@ -2,8 +2,12 @@
 
 import random
 import re
-from collections import Counter
-from services.processing.config import EXCLUDED_AUTHORS
+from collections import Counter, deque
+from services.processing.config import (
+    EXCLUDED_AUTHORS,
+    MAX_EXAMPLES_PER_TOPIC,
+    MAX_TRACKED_TOPICS,
+)
 from services.storage.logs.unwanted_words import STOPWORDS
 
 URL_PATTERN = re.compile(r"https?://\S+|www\.\S+")
@@ -17,6 +21,7 @@ class TrendProcessor:
         self.topic_examples = {}
         self.posts_processed = 0
         self.invalid_posts_skipped = 0
+        self.pruned_topics = 0
 
     def process_post(self, post: dict):
         if not self._is_valid_post(post):
@@ -40,7 +45,7 @@ class TrendProcessor:
 
         for topic in topics:
             if topic not in self.topic_examples:
-                self.topic_examples[topic] = []
+                self.topic_examples[topic] = deque(maxlen=MAX_EXAMPLES_PER_TOPIC)
 
             self.topic_examples[topic].append(
                 {
@@ -50,6 +55,8 @@ class TrendProcessor:
                     "text": text,
                 }
             )
+
+        self._prune_tracked_topics()
 
         self.posts_processed += 1
         return True
@@ -101,6 +108,17 @@ class TrendProcessor:
             phrases.append(f"{first_word} {second_word}")
 
         return phrases
+
+    def _prune_tracked_topics(self):
+        overflow = len(self.topic_counts) - MAX_TRACKED_TOPICS
+
+        if overflow <= 0:
+            return
+
+        for topic, _count in self.topic_counts.most_common()[MAX_TRACKED_TOPICS:]:
+            self.topic_counts.pop(topic, None)
+            self.topic_examples.pop(topic, None)
+            self.pruned_topics += 1
 
     def _is_valid_post(self, post):
         if not isinstance(post, dict):

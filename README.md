@@ -53,6 +53,7 @@ Reference file:
 - all services also support shared logging level control through `LOG_LEVEL`
 - the ingestion service also supports reconnect tuning through `RECONNECT_DELAY_SECONDS`, `MAX_RECONNECT_DELAY_SECONDS`, and `RECONNECT_BACKOFF_MULTIPLIER`
 - the broker and ingestion path also support Kafka delivery tuning through `KAFKA_ACKS`, `KAFKA_PRODUCER_RETRIES`, `KAFKA_RETRY_BACKOFF_MS`, `KAFKA_REQUEST_TIMEOUT_MS`, `KAFKA_DELIVERY_TIMEOUT_MS`, and `KAFKA_SEND_TIMEOUT_SECONDS`
+- the processing service also supports memory bounds through `MAX_EXAMPLES_PER_TOPIC` and `MAX_TRACKED_TOPICS`
 
 ## Run Paths In The Current Repo
 
@@ -116,6 +117,7 @@ Behavior:
 - consumes normalized posts from Kafka
 - validates consumed messages before processing them
 - computes top trend terms
+- keeps per-topic examples and tracked topic state bounded in memory
 - stores trend snapshots and example posts
 
 ### Dashboard
@@ -200,7 +202,7 @@ The current codebase supports adaptability through:
 
 ### Nice To Finish
 - [ ] Improve trend quality and reduce noisy keywords
-- [ ] Limit unbounded in-memory growth in the trend processor
+- [x] Limit unbounded in-memory growth in the trend processor
 - [ ] Add rotation or retention rules for stored snapshots
 - [ ] Move more runtime settings toward a clearer environment-based configuration pattern
 - [ ] Add a simple verification script or CI workflow

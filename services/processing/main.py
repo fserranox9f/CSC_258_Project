@@ -51,5 +51,8 @@ if __name__ == "__main__":
                 processor.invalid_posts_skipped,
             )
 
+        if processor.pruned_topics:
+            logger.warning("Tracked topics pruned from memory: %s", processor.pruned_topics)
+
         consumer.close()
         logger.info("Processing service shut down.")
