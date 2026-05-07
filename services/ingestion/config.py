@@ -1,29 +1,39 @@
 import os
 
+#------------------------
+# source settings/ server
+#------------------------
+SOURCE_NAME = os.getenv("SOURCE_NAME","bluesky")
 
-SOURCE_NAME = "bluesky"
-JETSTREAM_URLS = [
+DEFAULT_JETSTREAM_URLS = [
     "wss://jetstream1.us-east.bsky.network/subscribe",
     "wss://jetstream2.us-east.bsky.network/subscribe",
     "wss://jetstream1.us-west.bsky.network/subscribe",
     "wss://jetstream2.us-west.bsky.network/subscribe",
 ]
+
+JETSTREAM_URLS = [
+    url.strip()
+    for url in os.getenv("JETSTREAM_URLS", ",".join(DEFAULT_JETSTREAM_URLS)).split(",")
+    if url.strip()
+]
+
 JETSTREAM_INDEX = int(os.getenv("JETSTREAM_INDEX", "3"))
 
-LOCAL_SAMPLE_PATH = "services/ingestion/logs/post_dump.json"
-MAX_SAMPLE_POSTS = int(os.getenv("MAX_SAMPLE_POSTS", "200"))
+#------------------------
+# reconnection backoff time
+#------------------------
 RECONNECT_DELAY_SECONDS = float(os.getenv("RECONNECT_DELAY_SECONDS", "5"))
 MAX_RECONNECT_DELAY_SECONDS = float(os.getenv("MAX_RECONNECT_DELAY_SECONDS", "60"))
 RECONNECT_BACKOFF_MULTIPLIER = float(os.getenv("RECONNECT_BACKOFF_MULTIPLIER", "2"))
-
+MAX_RECONNECT_ATTEMPTS_BEFORE_SWITCH = int(os.getenv("MAX_RECONNECT_ATTEMPTS_BEFORE_SWITCH", "4"))
 
 __all__ = [
     "SOURCE_NAME",
     "JETSTREAM_URLS",
     "JETSTREAM_INDEX",
-    "LOCAL_SAMPLE_PATH",
-    "MAX_SAMPLE_POSTS",
     "RECONNECT_DELAY_SECONDS",
     "MAX_RECONNECT_DELAY_SECONDS",
     "RECONNECT_BACKOFF_MULTIPLIER",
+    "MAX_RECONNECT_ATTEMPTS_BEFORE_SWITCH"
 ]
