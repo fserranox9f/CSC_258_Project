@@ -21,6 +21,8 @@
 # -----------------------------------------------
 
 import json
+import time
+
 from kafka import KafkaProducer
 from kafka.errors import KafkaError
 from services.broker.config import *
@@ -70,3 +72,27 @@ class KafkaPostProducer:
         self.producer.flush()
         self.producer.close()
         logger.info("Kafka producer closed.")
+
+    def _create_producer_with_retry(self):
+        for attempt in range(1, KAFKA_STARTUP_MAX_ATTEMPTS + 1):
+            try:
+                return KafkaProducer(
+                    bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+                    acks=KAFKA_ACKS,
+                    retries=KAFKA_PRODUCER_RETRIES,
+                    retry_backoff_ms=KAFKA_RETRY_BACKOFF_MS,
+                    request_timeout_ms=KAFKA_REQUEST_TIMEOUT_MS,
+                    delivery_timeout_ms=KAFKA_DELIVERY_TIMEOUT_MS,
+                    value_serializer=lambda post: json.dumps(post).encode("utf-8"),
+                )
+            except NoBrokersAvailable:
+                logger.warning(
+                    "Kafka broker not ready for producer initialization "
+                    "(attempt %s/%s). Retrying in %.1f seconds.",
+                    attempt,
+                    KAFKA_STARTUP_MAX_ATTEMPTS,
+                    KAFKA_STARTUP_RETRY_DELAY_SECONDS,
+                )
+                time.sleep(KAFKA_STARTUP_RETRY_DELAY_SECONDS)
+
+        raise NoBrokersAvailable()

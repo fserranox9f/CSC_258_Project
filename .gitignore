@@ -17,6 +17,7 @@ htmlcov/
 *.log
 services/ingestion/logs/
 services/storage/logs/*.json
+services/storage/logs/*.tmp
 
 # OS/editor files
 .DS_Store

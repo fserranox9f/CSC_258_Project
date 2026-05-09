@@ -4,19 +4,19 @@
 #
 # --------------------------------------------------------------------------------
 
-from services.ingestion.config import *
+from services.ingestion.config import SOURCE_NAME
+
 
 def normalize_post(event: dict):
+    commit = event.get("commit", {})
+    record = commit.get("record", {})
 
-    commit = event.get("commit", {})            # the post was commited to their servers
-    record = commit.get("record", {})           # The content of the post
+    content = record.get("text")
+    timestamp = record.get("createdAt")
+    author = event.get("did")
+    rkey = commit.get("rkey")
 
-    content = record.get("text")                # the content of the post
-    timestamp = record.get("createdAt")         # timestamp
-    author = event.get("did")                   # author
-    rkey = commit.get("rkey")                   # post key
-
-    if not content:                             # skip post with no content
+    if not content:
         return None
 
     post_id = f"{author}:{rkey}" if author and rkey else author or "unknown"

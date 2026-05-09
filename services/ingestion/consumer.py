@@ -15,14 +15,20 @@
 
 import json
 import time
+
 import websocket
-from services.ingestion.config import *
+
+from services.ingestion.config import (
+    JETSTREAM_URLS,
+    MAX_RECONNECT_DELAY_SECONDS,
+    RECONNECT_BACKOFF_MULTIPLIER,
+    RECONNECT_DELAY_SECONDS,
+)
 from services.logging_utils import get_logger
 
 logger = get_logger("services.ingestion.consumer")
 
 class WSconsumer:
-
     def __init__(self, on_event, jetstream_index=0):
         self.on_event = on_event
         self.jetstream_index = jetstream_index

@@ -1,9 +1,6 @@
-#-----------------------------------------------------
-# Main Entry of Ingestion service
-# Connect to Bluesky through websocket and get post based on event trigger. 
-# The post is then JSON normalized and pushed to Kafka. 
-#-----------------------------------------------------
+# main entry to ingestion
 
+from services.logging_utils import get_logger
 from services.ingestion.config import *
 from services.ingestion.normalize import normalize_post
 from services.ingestion.consumer import WSconsumer
@@ -12,7 +9,19 @@ from services.logging_utils import get_logger
 
 logger = get_logger("services.ingestion.main")
 
-# this is called everytime the websocket consumer detects an event.
+
+#def handle_local_event(event, ws):
+#    post = normalize_post(event)
+
+#    if post is None:
+#        return
+
+#    writer.add_post(post)
+
+#    if writer.is_full():
+#        writer.save()
+#        ws.close()
+
 def handle_kafka_event(event, ws):
 
     # converts the event to a normalized format 
@@ -24,15 +33,20 @@ def handle_kafka_event(event, ws):
 
     # send the normalized post to kafka
     sent = producer.send_post(post)
-
     if not sent:
         logger.warning("Kafka publish failed for a normalized post.")
 
 
 if __name__ == "__main__":
-    
-    producer = KafkaPostProducer()                                                          # create kafka (producer)
-    consumer = WSconsumer(on_event=handle_kafka_event, jetstream_index=JETSTREAM_INDEX)     # Create websocket (consumer)
+
+    # --- test local post dump ---
+    # writer = SampleWriter(max_posts=MAX_SAMPLE_POSTS)
+    # consumer = WSconsumer(on_event=handle_event, jetstream_index=JETSTREAM_INDEX)
+    # consumer.run()
+
+    # --- write post to kafka ---
+    producer = KafkaPostProducer()
+    consumer = WSconsumer(on_event=handle_kafka_event, jetstream_index=JETSTREAM_INDEX)
 
     try:
         logger.info("Starting ingestion service with jetstream_index=%s", JETSTREAM_INDEX)

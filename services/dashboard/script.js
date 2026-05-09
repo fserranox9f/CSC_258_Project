@@ -63,6 +63,7 @@ async function loadTrends() {
 
     status.textContent = "Live";
   } catch (error) {
+    console.error(error);
     status.textContent = `Could not load trend data: ${error.message}`;
   }
 }
@@ -88,19 +89,25 @@ function renderSnapshot(snapshot) {
   document.getElementById("lastUpdated").textContent =
     formatTimestamp(snapshot.timestamp);
 
-  const trends = snapshot.trends || [];
-  const maxCount = Math.max(...trends.map((trend) => trend.count), 1);
-
+  const trends = Array.isArray(snapshot.trends) ? snapshot.trends : [];
+  const maxCount = Math.max(...trends.map((trend) => trend.count || 0), 1);
   const trendList = document.getElementById("trendList");
   trendList.innerHTML = "";
 
+  if (trends.length === 0) {
+    trendList.innerHTML = `<div class="empty-state">No trending words yet.</div>`;
+    return;
+  }
+
   // build one row per trend term
-  trends.forEach((trend, index) => {
+  for (let index = 0; index < trends.length; index++) {
+    const trend = trends[index];
     const row = document.createElement("div");
     row.className = "trend-row";
 
     // scale the bar relative to the top trend count
-    const width = Math.max((trend.count / maxCount) * 100, 4);
+    const count = trend.count ?? 0;
+    const width = Math.max((count / maxCount) * 100, 4);
 
     row.innerHTML = `
       <div class="rank">${index + 1}</div>
@@ -108,11 +115,11 @@ function renderSnapshot(snapshot) {
       <div class="bar-wrap">
         <div class="bar" style="width: ${width}%"></div>
       </div>
-      <div class="count">${trend.count}</div>
+      <div class="count">${count}</div>
     `;
 
     trendList.appendChild(row);
-  });
+  }
 }
 
 // render example posts for the top trending terms
@@ -135,9 +142,11 @@ function renderExamples(snapshot) {
     card.innerHTML = `
       <div class="example-header">
         <span class="example-term">${escapeHtml(item.term)}</span>
-        <span class="example-count">${item.count}</span>
+        <span class="example-count">${escapeHtml(item.count ?? 0)}</span>
       </div>
-      <p class="example-text">${escapeHtml(examplePost.text || "No post text saved.")}</p>
+      <p class="example-text">${escapeHtml(
+        examplePost.text || "No post text saved."
+      )}</p>
       <div class="example-meta">
         <span>${escapeHtml(examplePost.author || "unknown author")}</span>
         <span>${escapeHtml(formatTimestamp(examplePost.timestamp))}</span>
@@ -154,12 +163,17 @@ function formatTimestamp(timestamp) {
     return "Unknown";
   }
 
-  return new Date(timestamp).toLocaleTimeString();
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) {
+    return "Invalid date";
+  }
+
+  return date.toLocaleString();
 }
 
 // escape user text before inserting it into the page
 function escapeHtml(value) {
-  return String(value)
+  return String(value ?? "")
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")

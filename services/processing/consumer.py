@@ -12,12 +12,15 @@
 # -----------------------------------------------------
 
 import json
+import time
+
 from kafka import KafkaConsumer
 from kafka.errors import KafkaError
 from services.broker.config import KAFKA_BOOTSTRAP_SERVERS, SOCIAL_POSTS_TOPIC
 from services.logging_utils import get_logger
 
 logger = get_logger("services.processing.consumer")
+
 
 class KafkaPostConsumer:
     def __init__(self):
@@ -58,7 +61,6 @@ class KafkaPostConsumer:
 
         for field in required_string_fields:    # check if all fields exists
             value = post.get(field)
-
             if not isinstance(value, str) or not value.strip():
                 return False
 
@@ -77,3 +79,25 @@ class KafkaPostConsumer:
         self.consumer.close()
         logger.info("Kafka consumer closed.")
 
+    def _create_consumer_with_retry(self):
+        for attempt in range(1, KAFKA_STARTUP_MAX_ATTEMPTS + 1):
+            try:
+                return KafkaConsumer(
+                    SOCIAL_POSTS_TOPIC,
+                    bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+                    value_deserializer=lambda message: json.loads(message.decode("utf-8")),
+                    auto_offset_reset="earliest",
+                    enable_auto_commit=True,
+                    group_id="processing-service",
+                )
+            except NoBrokersAvailable:
+                logger.warning(
+                    "Kafka broker not ready for consumer initialization "
+                    "(attempt %s/%s). Retrying in %.1f seconds.",
+                    attempt,
+                    KAFKA_STARTUP_MAX_ATTEMPTS,
+                    KAFKA_STARTUP_RETRY_DELAY_SECONDS,
+                )
+                time.sleep(KAFKA_STARTUP_RETRY_DELAY_SECONDS)
+
+        raise NoBrokersAvailable()

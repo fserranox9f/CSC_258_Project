@@ -24,6 +24,7 @@
 import random
 import re
 from collections import Counter, deque
+
 from services.processing.config import (
     EXCLUDED_AUTHORS,
     MAX_EXAMPLES_PER_TOPIC,
@@ -61,7 +62,6 @@ class TrendProcessor:
             return False
 
         text = post.get("text", "")
-
         if not text:
             return False
 
@@ -89,7 +89,6 @@ class TrendProcessor:
             )
 
         self._prune_tracked_topics()
-
         self.posts_processed += 1
         return True
 
@@ -125,13 +124,7 @@ class TrendProcessor:
 
         # Regular words are extracted separately, then filtered through stopwords.
         words = WORD_PATTERN.findall(text)
-
-        meaningful_words = [
-            word
-            for word in words
-            if word not in STOPWORDS
-        ]
-
+        meaningful_words = [word for word in words if word not in STOPWORDS]
         phrases = self._build_phrases(meaningful_words)
 
         return hashtags + meaningful_words + phrases
@@ -143,7 +136,6 @@ class TrendProcessor:
         for index in range(len(words) - 1):
             first_word = words[index]
             second_word = words[index + 1]
-
             phrases.append(f"{first_word} {second_word}")
 
         return phrases
@@ -151,7 +143,6 @@ class TrendProcessor:
     def _prune_tracked_topics(self):
         # Keep only the most common topics so long-running streams stay bounded.
         overflow = len(self.topic_counts) - MAX_TRACKED_TOPICS
-
         if overflow <= 0:
             return
 
@@ -166,10 +157,8 @@ class TrendProcessor:
             return False
 
         required_string_fields = ("post_id", "text", "author", "source")
-
         for field in required_string_fields:
             value = post.get(field)
-
             if not isinstance(value, str) or not value.strip():
                 return False
 
