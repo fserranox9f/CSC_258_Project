@@ -34,16 +34,6 @@ The database service is PostgreSQL. It stores trend snapshots, trend terms, and 
 
 The dashboard service is a local web dashboard. It fetches the latest trend data from the storage API and displays it to the user.
 
-## Deployment Options
-
-This project now supports two deployment paths:
-
-- Local Docker Compose deployment for running everything on your machine.
-- Google Cloud deployment with Cloud Build, Artifact Registry, and Google Kubernetes Engine.
-
-For local Docker, see `How to Run`.
-
-For Google Cloud through the browser UI and Cloud Shell, see `Google Cloud and GKE Deployment`.
 
 ```text
 services
@@ -105,71 +95,13 @@ The `.env.variables` file is a reference file for environment variables. The Doc
 
 ## How to Run
 
-The following commands should be run from the root level of the project.
-
-1. Start the full local deployment.
-
-```powershell
-docker compose up
-```
-
-Or run the stack in the background:
-
-```powershell
-docker compose up -d
-```
-
-This starts:
-
-- Kafka broker
-- ingestion service
-- processing service
-- PostgreSQL database
-- storage Flask API
-- dashboard service
-
-2. Check that containers are running.
-
-```powershell
-docker compose ps
-```
-
-3. Open the dashboard in a browser.
-
-```text
-http://localhost:8000/dashboard/index.html
-```
-
-4. Check the storage API directly.
-
-```text
-http://localhost:5001/api/latest-trends
-http://localhost:5001/api/latest-examples
-```
-
-5. Stop the local deployment.
-
-```powershell
-docker compose down
-```
-
-To also remove the PostgreSQL volume and delete saved database data:
-
-```powershell
-docker compose down -v
-```
-
-## Google Cloud and GKE Deployment
-
-The project can also run on Google Kubernetes Engine. The easiest browser-based workflow is to use the Google Cloud Console for setup and Cloud Shell for commands.
-
-### 1. Create Google Cloud resources in the browser
+### 1. Create Google Cloud 
 
 In the Google Cloud Console:
 
-1. Create or select a project.
-2. Make sure billing is enabled.
-3. Enable these APIs:
+1. Create project.
+2. billing is enabled.
+3. Enable APIs:
    - Kubernetes Engine API
    - Artifact Registry API
    - Cloud Build API
@@ -278,34 +210,3 @@ kubectl logs -n csc258 deployment/storage --tail=100
 kubectl rollout status -n csc258 deployment/storage
 kubectl delete -k k8s/base
 ```
-
-## Other
-
-Validate the Docker Compose file:
-
-```powershell
-docker compose config
-```
-
-View service logs:
-
-```powershell
-docker compose logs -f
-```
-
-View logs for a specific service:
-
-```powershell
-docker compose logs -f ingestion
-docker compose logs -f processing
-docker compose logs -f storage
-docker compose logs -f db
-```
-
-See messages in Kafka:
-
-```powershell
-docker exec -it broker /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic BlueSky_socialmedia_posts --from-beginning
-```
-
-The current local deployment demonstrates service separation, Kafka-based messaging, PostgreSQL persistence, a storage API boundary, and a dashboard that reads trend data through HTTP.
