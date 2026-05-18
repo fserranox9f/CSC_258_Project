@@ -1,0 +1,24 @@
+#-----------------------------------------------------
+# Kustomize entry point for GKE.
+#
+#   -- Deployment --
+#   kubectl apply -k k8s/base reads this file and deploys the whole stack.
+#
+#   -- Adaptability --
+#   Replace PROJECT_ID with your Google Cloud project ID before deploying.
+#-----------------------------------------------------
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secret.example.yaml
+  - postgres.yaml
+  - kafka.yaml
+  - app.yaml
+images:
+  # swaps the local image name in the manifests for the Artifact Registry image
+  - name: csc258-trend-system
+    newName: us-docker.pkg.dev/PROJECT_ID/csc258/trend-system
+    newTag: latest

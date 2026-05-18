@@ -34,6 +34,17 @@ The database service is PostgreSQL. It stores trend snapshots, trend terms, and 
 
 The dashboard service is a local web dashboard. It fetches the latest trend data from the storage API and displays it to the user.
 
+## Deployment Options
+
+This project now supports two deployment paths:
+
+- Local Docker Compose deployment for running everything on your machine.
+- Google Cloud deployment with Cloud Build, Artifact Registry, and Google Kubernetes Engine.
+
+For local Docker, see `How to Run`.
+
+For Google Cloud through the browser UI and Cloud Shell, see `Google Cloud and GKE Deployment`.
+
 ```text
 services
     broker
@@ -146,6 +157,126 @@ To also remove the PostgreSQL volume and delete saved database data:
 
 ```powershell
 docker compose down -v
+```
+
+## Google Cloud and GKE Deployment
+
+The project can also run on Google Kubernetes Engine. The easiest browser-based workflow is to use the Google Cloud Console for setup and Cloud Shell for commands.
+
+### 1. Create Google Cloud resources in the browser
+
+In the Google Cloud Console:
+
+1. Create or select a project.
+2. Make sure billing is enabled.
+3. Enable these APIs:
+   - Kubernetes Engine API
+   - Artifact Registry API
+   - Cloud Build API
+
+Create the Docker image repository:
+
+1. Open Artifact Registry.
+2. Click Repositories.
+3. Click Create Repository.
+4. Name it `csc258`.
+5. Set Format to Docker.
+6. Set Location type to Multi-region.
+7. Set Location to `us`.
+8. Click Create.
+
+Create the GKE cluster:
+
+1. Open Kubernetes Engine.
+2. Click Create.
+3. Choose Autopilot.
+4. Name it `csc258-cluster`.
+5. Set Region to `us-central1`.
+6. Keep the defaults and click Create.
+
+### 2. Upload or clone the repo in Cloud Shell
+
+Open Cloud Shell from the top-right terminal icon in Google Cloud Console. Put this project in Cloud Shell by cloning your GitHub repo or uploading the project files.
+
+From the project root, set your project:
+
+```bash
+gcloud config set project YOUR_PROJECT_ID
+```
+
+Edit `k8s/base/kustomization.yaml` and replace `PROJECT_ID` with your real Google Cloud project ID.
+
+Edit `k8s/base/secret.example.yaml` and replace `change-me-before-deploying` with a real database password.
+
+### 3. Build and push the Docker image
+
+```bash
+gcloud builds submit --config cloudbuild.yaml
+```
+
+This builds the shared Python image and pushes it to Artifact Registry as:
+
+```text
+us-docker.pkg.dev/YOUR_PROJECT_ID/csc258/trend-system:latest
+```
+
+### 4. Connect Cloud Shell to the GKE cluster
+
+```bash
+gcloud container clusters get-credentials csc258-cluster --region us-central1
+```
+
+### 5. Deploy the Kubernetes resources
+
+```bash
+kubectl apply -k k8s/base
+```
+
+Check the pods:
+
+```bash
+kubectl get pods -n csc258
+```
+
+Check the public service IPs:
+
+```bash
+kubectl get services -n csc258
+```
+
+Wait until both `storage` and `dashboard` show external IP addresses.
+
+### 6. Point the dashboard at the storage API
+
+After the `storage` service has an external IP, update the dashboard config:
+
+```bash
+kubectl create configmap dashboard-config \
+  --namespace csc258 \
+  --from-literal=config.js='window.DASHBOARD_API_BASE_URL = "http://STORAGE_EXTERNAL_IP:5001";' \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl rollout restart deployment/dashboard -n csc258
+```
+
+Replace `STORAGE_EXTERNAL_IP` with the external IP from `kubectl get services -n csc258`.
+
+Open the dashboard:
+
+```text
+http://DASHBOARD_EXTERNAL_IP:8000/dashboard/index.html
+```
+
+Replace `DASHBOARD_EXTERNAL_IP` with the dashboard service external IP.
+
+Useful GKE commands:
+
+```bash
+kubectl logs -n csc258 deployment/ingestion --tail=100
+kubectl logs -n csc258 deployment/processing --tail=100
+kubectl logs -n csc258 deployment/storage --tail=100
+kubectl rollout status -n csc258 deployment/storage
+kubectl delete -k k8s/base
 ```
 
 ## Other

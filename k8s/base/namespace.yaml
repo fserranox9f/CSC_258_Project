@@ -1,0 +1,11 @@
+#-----------------------------------------------------
+# Kubernetes namespace for the project.
+#
+#   -- Open Design --
+#   Keeps all CSC 258 resources grouped together in GKE.
+#-----------------------------------------------------
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: csc258

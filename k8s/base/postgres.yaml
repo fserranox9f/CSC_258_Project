@@ -1,0 +1,73 @@
+#-----------------------------------------------------
+# PostgreSQL database for the GKE deployment.
+#
+#   -- Scalability --
+#   Uses a StatefulSet and persistent volume so data survives pod restarts.
+#
+#   -- Security --
+#   Database credentials come from postgres-secret.
+#-----------------------------------------------------
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: csc258
+spec:
+  selector:
+    app: postgres
+  ports:
+    # internal database port used only inside the cluster
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: csc258
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          ports:
+            - containerPort: 5432
+          envFrom:
+            # pulls POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
+            - secretRef:
+                name: postgres-secret
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            # checks that Postgres is ready before other pods depend on it
+            exec:
+              command:
+                - pg_isready
+                - -U
+                - trend_user
+                - -d
+                - trends_db
+            initialDelaySeconds: 10
+            periodSeconds: 10
+  volumeClaimTemplates:
+    # GKE creates persistent storage for the database data directory
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi

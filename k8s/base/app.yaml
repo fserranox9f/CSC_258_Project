@@ -1,0 +1,175 @@
+#-----------------------------------------------------
+# Application services for GKE.
+#
+#   -- Open Design --
+#   Each project component runs as its own Kubernetes Deployment.
+#
+#   -- Adaptability --
+#   The same Docker image is reused with different commands per service.
+#-----------------------------------------------------
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: storage
+  namespace: csc258
+spec:
+  # public API endpoint so the browser dashboard can reach storage
+  type: LoadBalancer
+  selector:
+    app: storage
+  ports:
+    - name: http
+      port: 5001
+      targetPort: 5001
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: storage
+  namespace: csc258
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: storage
+  template:
+    metadata:
+      labels:
+        app: storage
+    spec:
+      containers:
+        - name: storage
+          image: csc258-trend-system:latest
+          imagePullPolicy: IfNotPresent
+          # storage runs the Flask API and writes trend data to PostgreSQL
+          command:
+            - python
+            - -m
+            - services.storage.main
+          ports:
+            - containerPort: 5001
+          envFrom:
+            # shared service config
+            - configMapRef:
+                name: csc258-config
+            # database URL and credentials
+            - secretRef:
+                name: postgres-secret
+          readinessProbe:
+            # confirms the Flask API can serve dashboard reads
+            httpGet:
+              path: /api/latest-trends
+              port: 5001
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: processing
+  namespace: csc258
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: processing
+  template:
+    metadata:
+      labels:
+        app: processing
+    spec:
+      containers:
+        - name: processing
+          image: csc258-trend-system:latest
+          imagePullPolicy: IfNotPresent
+          # processing reads Kafka posts and sends snapshots to storage
+          command:
+            - python
+            - -m
+            - services.processing.main
+          envFrom:
+            - configMapRef:
+                name: csc258-config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingestion
+  namespace: csc258
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ingestion
+  template:
+    metadata:
+      labels:
+        app: ingestion
+    spec:
+      containers:
+        - name: ingestion
+          image: csc258-trend-system:latest
+          imagePullPolicy: IfNotPresent
+          # ingestion reads Bluesky Jetstream and publishes normalized posts
+          command:
+            - python
+            - -m
+            - services.ingestion.main
+          envFrom:
+            - configMapRef:
+                name: csc258-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard
+  namespace: csc258
+spec:
+  # public dashboard endpoint
+  type: LoadBalancer
+  selector:
+    app: dashboard
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard
+  namespace: csc258
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dashboard
+  template:
+    metadata:
+      labels:
+        app: dashboard
+    spec:
+      containers:
+        - name: dashboard
+          image: csc258-trend-system:latest
+          imagePullPolicy: IfNotPresent
+          # simple static server for services/dashboard
+          command:
+            - python
+            - -m
+            - http.server
+            - "8000"
+            - --directory
+            - /app/services
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            # replaces local config.js with the GKE public API URL config
+            - name: dashboard-config
+              mountPath: /app/services/dashboard/config.js
+              subPath: config.js
+      volumes:
+        - name: dashboard-config
+          configMap:
+            name: dashboard-config

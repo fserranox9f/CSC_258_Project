@@ -1,0 +1,30 @@
+#-----------------------------------------------------
+# Google Cloud Build config.
+#
+#   -- Deployment --
+#   Builds the shared service image and pushes it to Artifact Registry.
+#
+#   -- Adaptability --
+#   Region, repository, and image name can be changed with substitutions.
+#-----------------------------------------------------
+
+substitutions:
+  _REGION: us
+  _REPOSITORY: csc258
+  _IMAGE: trend-system
+
+steps:
+  # build one image that all Python services can run from
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:$SHORT_SHA
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:latest
+      - .
+
+# Cloud Build pushes both the commit-specific tag and the latest tag.
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:$SHORT_SHA
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPOSITORY}/${_IMAGE}:latest

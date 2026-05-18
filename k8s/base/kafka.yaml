@@ -1,0 +1,70 @@
+#-----------------------------------------------------
+# Kafka broker for the GKE deployment.
+#
+#   -- Open Design --
+#   Kafka stays as the message handoff between ingestion and processing.
+#
+#   -- Availability --
+#   The service name "broker" gives the app a stable in-cluster address.
+#-----------------------------------------------------
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: broker
+  namespace: csc258
+spec:
+  selector:
+    app: broker
+  ports:
+    # internal Kafka port used by ingestion and processing
+    - name: kafka
+      port: 9093
+      targetPort: 9093
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: broker
+  namespace: csc258
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: broker
+  template:
+    metadata:
+      labels:
+        app: broker
+    spec:
+      containers:
+        - name: broker
+          image: apache/kafka:4.1.2
+          ports:
+            - containerPort: 9093
+          env:
+            # single-node Kafka settings for a simple class-project GKE demo
+            - name: KAFKA_LISTENERS
+              value: CONTROLLER://localhost:9091,DOCKER://0.0.0.0:9093
+            - name: KAFKA_ADVERTISED_LISTENERS
+              value: DOCKER://broker:9093
+            - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+              value: CONTROLLER:PLAINTEXT,DOCKER:PLAINTEXT
+            - name: KAFKA_NODE_ID
+              value: "1"
+            - name: KAFKA_PROCESS_ROLES
+              value: broker,controller
+            - name: KAFKA_CONTROLLER_LISTENER_NAMES
+              value: CONTROLLER
+            - name: KAFKA_CONTROLLER_QUORUM_VOTERS
+              value: 1@localhost:9091
+            - name: KAFKA_INTER_BROKER_LISTENER_NAME
+              value: DOCKER
+            - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+              value: "1"
+          readinessProbe:
+            # wait until the broker port is accepting traffic
+            tcpSocket:
+              port: 9093
+            initialDelaySeconds: 20
+            periodSeconds: 10

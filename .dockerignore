@@ -1,0 +1,25 @@
+#-----------------------------------------------------
+# Files excluded from Docker image builds.
+#
+#   -- Scalability --
+#   Keeps cloud builds smaller and faster by skipping tests, git history,
+#   local caches, and generated logs.
+#-----------------------------------------------------
+
+.git
+.gitignore
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.venv-runtime/
+venv/
+env/
+.env
+.env.*
+!/.env.example
+services/storage/logs/
+tests/
+k8s/
+README.md
+INTERFACES.md
